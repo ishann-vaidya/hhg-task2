@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Data & indexes (downloaded / generated — too large for git)
+data/raw/
+data/processed/
+data/indexes/
+*.faiss
+*.pkl
+
+# Secrets
+.env
+.env.*
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs & analytics output
+logs/
+*.csv
+!data/sample_queries.csv
+
+# Streamlit
+.streamlit/secrets.toml
