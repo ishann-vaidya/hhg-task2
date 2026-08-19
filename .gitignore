@@ -10,6 +10,8 @@ env/
 data/raw/
 data/processed/
 data/indexes/
+data/temp/
+data/latency_report.json
 *.faiss
 *.pkl
 
