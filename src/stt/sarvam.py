@@ -48,9 +48,13 @@ class SarvamSTT:
 
         headers = {"api-subscription-key": self.api_key}
 
+        import mimetypes
+        content_type, _ = mimetypes.guess_type(str(audio_path))
+        content_type = content_type or "audio/wav"
+
         # Open in binary mode for multipart upload
         with audio_path.open("rb") as f:
-            files = {"file": (audio_path.name, f.read(), "audio/wav")}
+            files = {"file": (audio_path.name, f.read(), content_type)}
 
         data = {"model": self.model}
 
