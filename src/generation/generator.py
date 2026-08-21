@@ -50,11 +50,27 @@ class GenerationOutput(BaseModel):
 class RAGOrchestrator:
     """Manages LLM interaction, retry loops, structured formatting, and fail-safes."""
 
-    def __init__(self, api_key: str | None = None, model: str = "llama3-8b-8192"):
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str = "llama3-8b-8192",
+        language: str = "hi",
+    ):
         self.api_key = api_key or os.getenv("GROQ_API_KEY")
         self.model = model
         self.api_url = "https://api.groq.com/openai/v1/chat/completions"
         self._retry_count = 0
+        self.language = language
+
+        # Map language codes to names for prompting
+        language_names = {
+            "hi": "Hindi",
+            "en": "English",
+            "mr": "Marathi",
+            "ta": "Tamil",
+            "te": "Telugu",
+        }
+        self.language_name = language_names.get(language, "Hindi")
 
     @retry(
         stop=stop_after_attempt(3),
@@ -131,9 +147,9 @@ class RAGOrchestrator:
             )
 
         system_prompt = (
-            "You are an assistant that answers questions in Hindi based strictly on the provided context.\n"
+            f"You are an assistant that answers questions in {self.language_name} based strictly on the provided context.\n"
             "You must return a JSON object with the following fields:\n"
-            "- answer (str): The final answer to the query in Hindi. If the context is insufficient, state that you cannot answer based on the context.\n"
+            f"- answer (str): The final answer to the query in {self.language_name}. If the context is insufficient, state that you cannot answer based on the context.\n"
             "- citations (list of str): List of Passage IDs used to build this answer. Must be from the provided context.\n"
             "- grounded (bool): True if the answer is directly supported by the context, False if it is not or is a hallucination.\n"
             "- reasoning (str): Step-by-step reasoning in English explaining why the answer matches the query and is grounded in the context.\n"

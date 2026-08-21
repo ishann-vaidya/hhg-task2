@@ -24,9 +24,62 @@ import {
 // Server URL - dynamically determine if we are running in the same origin or fallback
 const API_BASE = "http://localhost:8000";
 
+// Multi-language configurations (Presets, placeholders, and mock defaults)
+const languageConfigs = {
+  en: {
+    name: "English",
+    placeholder: "Type English question here...",
+    mockText: "What is a corporation?",
+    presets: [
+      { title: "🏢 Corp Definition", text: "What is a corporation?" },
+      { title: "🥔 Low Potassium List", text: "Chart for foods low in potassium" },
+      { title: "📖 Rachel Carson", text: "Why did Rachel Carson write Silent Spring?" }
+    ]
+  },
+  hi: {
+    name: "Hindi (हिन्दी)",
+    placeholder: "Type Hindi question here...",
+    mockText: "निगम क्या है?",
+    presets: [
+      { title: "🏢 निगम परिभाषा", text: "कॉर्पोरेशन क्या है?" },
+      { title: "🥔 पोटेशियम सूची", text: "पोटेशियम में कम खाद्य पदार्थों का चार्ट।" },
+      { title: "📖 दायित्व बर्दाश्त", text: "रेचल कार्सन ने क्यों एक दायित्व बर्दाश्त करने के लिए लिखा" }
+    ]
+  },
+  mr: {
+    name: "Marathi (मराठी)",
+    placeholder: "Type Marathi question here...",
+    mockText: "कॉर्पोरेशन म्हणजे काय?",
+    presets: [
+      { title: "🏢 कॉर्पोरेशन व्याख्या", text: "कॉर्पोरेशन म्हणजे काय?" },
+      { title: "🥔 कमी पोटॅशियम", text: "कमी पोटॅशियम असलेल्या पदार्थांचा चार्ट।" },
+      { title: "📖 कार्सन कार्सन", text: "रेचल कार्सनने सायलेंट स्प्रिंग का लिहिले?" }
+    ]
+  },
+  te: {
+    name: "Telugu (తెలుగు)",
+    placeholder: "Type Telugu question here...",
+    mockText: "కార్పొరేషన్ అంటే ఏమిటి?",
+    presets: [
+      { title: "🏢 కార్పొరేషన్", text: "కార్పొరేషన్ అంటే ఏమిటి?" },
+      { title: "🥔 తక్కువ పొటాషియం", text: "పొటాషియం తక్కువగా ఉండే ఆహారాల చార్ట్." }
+    ]
+  },
+  ta: {
+    name: "Tamil (தமிழ்)",
+    placeholder: "Type Tamil question here...",
+    mockText: "கார்ப்பரேஷன் என்றால் என்ன?",
+    presets: [
+      { title: "🏢 கார்ப்பரேஷன்", text: "கார்ப்பரேஷன் என்றால் என்ன?" },
+      { title: "🥔 குறைந்த பொட்டாசியம்", text: "குறைந்த பொட்டாசியம் உணவுகளின் விளக்கப்படம்." }
+    ]
+  }
+};
+
 export default function App() {
   // Config state
   const [strategy, setStrategy] = useState("metadata_aware");
+  const [language, setLanguage] = useState("en"); // Default to English interface queries
   const [threshold, setThreshold] = useState(0.42);
   const [isMock, setIsMock] = useState(true);
   const [apiStatus, setApiStatus] = useState({
@@ -157,7 +210,6 @@ export default function App() {
 
     setLoading(true);
     setResponse(null);
-    const startTime = performance.now();
 
     try {
       let data;
@@ -170,9 +222,10 @@ export default function App() {
           formData.append("file", audioFile);
         }
         formData.append("strategy", strategy);
+        formData.append("language", language);
         formData.append("threshold", threshold.toString());
         formData.append("mock", isMock.toString());
-        formData.append("mock_text", query || "निगम क्या है?");
+        formData.append("mock_text", query || languageConfigs[language].mockText);
 
         const res = await fetch(`${API_BASE}/api/predict/audio`, {
           method: "POST",
@@ -188,6 +241,7 @@ export default function App() {
           body: JSON.stringify({
             query: query,
             strategy: strategy,
+            language: language,
             threshold: threshold,
             mock: isMock
           })
@@ -214,11 +268,12 @@ export default function App() {
     setAudioUrl("");
   };
 
-  const presets = [
-    { title: "🏢 निगम परिभाषा", text: "कॉर्पोरेशन क्या है?" },
-    { title: "🥔 पोटेशियम सूची", text: "पोटेशियम में कम खाद्य पदार्थों का चार्ट।" },
-    { title: "📖 दायित्व बर्दाश्त", text: "रेचल कार्सन ने क्यों एक दायित्व बर्दाश्त करने के लिए लिखा" }
-  ];
+  // Clear query on language change to keep dynamic prompts context clean
+  const handleLanguageChange = (newLang) => {
+    setLanguage(newLang);
+    setQuery("");
+    setResponse(null);
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased">
@@ -266,7 +321,7 @@ export default function App() {
         {/* ── Left Column: Config Panel ── */}
         <section className="lg:col-span-4 flex flex-col gap-6">
           
-          {/* Strategy & Threshold Controls Card */}
+          {/* Strategy & Language Controls Card */}
           <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-md">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
@@ -283,12 +338,30 @@ export default function App() {
 
             {showConfig && (
               <div className="flex flex-col gap-4">
+                
+                {/* Language Selector Dropdown */}
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1.5 font-medium">Input/Output Language</label>
+                  <select
+                    value={language}
+                    onChange={(e) => handleLanguageChange(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                  >
+                    {Object.entries(languageConfigs).map(([code, cfg]) => (
+                      <option key={code} value={code}>
+                        {cfg.name}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="text-[10px] text-slate-500 block mt-1">Sets the speech model language and target LLM output script.</span>
+                </div>
+
                 <div>
                   <label className="text-xs text-slate-400 block mb-1.5 font-medium">FAISS Chunk Strategy</label>
                   <select
                     value={strategy}
                     onChange={(e) => setStrategy(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
                   >
                     <option value="metadata_aware">Metadata-Aware (Paragraph first)</option>
                     <option value="semantic">Semantic (Similarity splits)</option>
@@ -413,9 +486,9 @@ export default function App() {
 
               <div className="text-center">
                 <p className="text-sm font-semibold">
-                  {isRecording ? `Recording... (${recordingTime}s)` : "Press microphone to record speech"}
+                  {isRecording ? `Recording... (${recordingTime}s)` : `Press microphone to record ${languageConfigs[language].name}`}
                 </p>
-                <p className="text-xs text-slate-500 mt-1">Accepts voice queries in Hindi. Transcribes via Sarvam AI.</p>
+                <p className="text-xs text-slate-500 mt-1">Accepts voice queries and transcribes via Sarvam AI.</p>
               </div>
 
               {/* Recorded Audio Playback */}
@@ -451,7 +524,7 @@ export default function App() {
                 <label className="text-xs text-slate-400 block mb-1 font-medium">Or type query text directly</label>
                 <input
                   type="text"
-                  placeholder="Type Hindi question here..."
+                  placeholder={languageConfigs[language].placeholder}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-900 rounded-lg py-2.5 px-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
@@ -462,7 +535,7 @@ export default function App() {
             {/* Quick click tags */}
             <div className="flex flex-wrap gap-2 items-center mb-6">
               <span className="text-[10px] text-slate-500 font-medium">Preset Prompts:</span>
-              {presets.map((p, idx) => (
+              {languageConfigs[language].presets.map((p, idx) => (
                 <button
                   key={idx}
                   onClick={() => loadPreset(p.text)}

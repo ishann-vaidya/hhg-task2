@@ -67,8 +67,13 @@ def main() -> None:
     print("=" * 72)
     print(f"Loading {args.n} examples for language '{args.language}' split '{args.split}'...")
 
-    examples = load_msmarco_subset(language=args.language, split=args.split, n=args.n)
-    df = examples_to_passages_df(examples)
+    if args.language == "en":
+        # Load default Hindi validation parquet, but flat-map the English columns
+        examples = load_msmarco_subset(language="hi", split=args.split, n=args.n)
+        df = examples_to_passages_df(examples, use_translated=False)
+    else:
+        examples = load_msmarco_subset(language=args.language, split=args.split, n=args.n)
+        df = examples_to_passages_df(examples, use_translated=True)
     print(f"[OK] Loaded {len(df)} total passage slots.")
 
     # 2. Chunking
@@ -94,7 +99,7 @@ def main() -> None:
         print(f"\nBuilding FAISS index for strategy: '{strategy}' ({len(chunks)} chunks)...")
         index, metadata_list = indexer.build_index(chunks)
 
-        output_dir = INDEX_DIR / strategy
+        output_dir = INDEX_DIR / strategy / args.language
         print(f"Saving index to {output_dir}...")
         indexer.save_index(index, metadata_list, output_dir)
         print(f"[OK] Index saved successfully (FAISS size: {index.ntotal} vectors).")

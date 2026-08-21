@@ -16,13 +16,15 @@ class VoiceRAGPipeline:
     def __init__(
         self,
         strategy: str = "metadata_aware",
+        language: str = "hi",
         off_topic_threshold: float = 0.42,
         groq_model: str = "llama3-8b-8192",
         stt_model: str = "saaras:v3",
     ):
+        self.language = language
         self.stt = SarvamSTT(model=stt_model)
-        self.retriever = VectorRetriever(strategy=strategy)
-        self.generator = RAGOrchestrator(model=groq_model)
+        self.retriever = VectorRetriever(strategy=strategy, language=language)
+        self.generator = RAGOrchestrator(model=groq_model, language=language)
         self.guardrails = RAGGuardrails(off_topic_threshold=off_topic_threshold)
 
     def run_pipeline(
@@ -42,8 +44,19 @@ class VoiceRAGPipeline:
         if audio_path is not None:
             stt_start = time.perf_counter()
             try:
+                # Map simple language codes to BCP-47 for Sarvam STT
+                locale_map = {
+                    "hi": "hi-IN",
+                    "en": "en-IN",
+                    "mr": "mr-IN",
+                    "ta": "ta-IN",
+                    "te": "te-IN"
+                }
+                stt_lang = locale_map.get(self.language, "hi-IN")
+
                 stt_res = self.stt.transcribe(
                     audio_path=audio_path,
+                    language_code=stt_lang,
                     mock=mock_stt,
                     mock_text=mock_stt_text,
                 )

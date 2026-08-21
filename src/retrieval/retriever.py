@@ -14,10 +14,12 @@ class VectorRetriever:
     def __init__(
         self,
         strategy: str = "metadata_aware",
+        language: str = "hi",
         index_dir: Path | None = None,
     ):
         self.strategy = strategy
-        self.index_dir = index_dir or (INDEX_DIR / strategy)
+        self.language = language
+        self.index_dir = index_dir or (INDEX_DIR / strategy / language)
         self.indexer = ChunkIndexer()
         self.index = None
         self.metadata = None

@@ -41,6 +41,7 @@ TEMP_DIR.mkdir(parents=True, exist_ok=True)
 class TextQueryRequest(BaseModel):
     query: str
     strategy: str = "metadata_aware"
+    language: str = "hi"
     threshold: float = 0.42
     mock: bool = False
     mock_answer: str | None = None
@@ -64,6 +65,7 @@ def predict_text(request: TextQueryRequest) -> dict[str, Any]:
     try:
         pipeline = VoiceRAGPipeline(
             strategy=request.strategy,
+            language=request.language,
             off_topic_threshold=request.threshold,
         )
 
@@ -82,6 +84,7 @@ def predict_text(request: TextQueryRequest) -> dict[str, Any]:
 async def predict_audio(
     file: UploadFile = File(...),
     strategy: str = Form("metadata_aware"),
+    language: str = Form("hi"),
     threshold: float = Form(0.42),
     mock: bool = Form(False),
     mock_text: str = Form("निगम क्या है?"),
@@ -104,6 +107,7 @@ async def predict_audio(
         # Initialize and run pipeline
         pipeline = VoiceRAGPipeline(
             strategy=strategy,
+            language=language,
             off_topic_threshold=threshold,
         )
 
