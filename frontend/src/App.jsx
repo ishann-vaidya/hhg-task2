@@ -31,9 +31,9 @@ const languageConfigs = {
     placeholder: "Type English question here...",
     mockText: "What is a corporation?",
     presets: [
-      { title: "🏢 Corp Definition", text: "What is a corporation?" },
-      { title: "🥔 Low Potassium List", text: "Chart for foods low in potassium" },
-      { title: "📖 Rachel Carson", text: "Why did Rachel Carson write Silent Spring?" }
+      { title: "Corp Definition", text: "What is a corporation?" },
+      { title: "Low Potassium List", text: "Chart for foods low in potassium" },
+      { title: "Rachel Carson", text: "Why did Rachel Carson write Silent Spring?" }
     ]
   },
   hi: {
@@ -41,9 +41,9 @@ const languageConfigs = {
     placeholder: "Type Hindi question here...",
     mockText: "निगम क्या है?",
     presets: [
-      { title: "🏢 निगम परिभाषा", text: "कॉर्पोरेशन क्या है?" },
-      { title: "🥔 पोटेशियम सूची", text: "पोटेशियम में कम खाद्य पदार्थों का चार्ट।" },
-      { title: "📖 दायित्व बर्दाश्त", text: "रेचल कार्सन ने क्यों एक दायित्व बर्दाश्त करने के लिए लिखा" }
+      { title: "निगम परिभाषा", text: "कॉर्पोरेशन क्या है?" },
+      { title: "पोटेशियम सूची", text: "पोटेशियम में कम खाद्य पदार्थों का चार्ट।" },
+      { title: "दायित्व बर्दाश्त", text: "रेचल कार्सन ने क्यों एक दायित्व बर्दाश्त करने के लिए लिखा" }
     ]
   },
   mr: {
@@ -51,9 +51,9 @@ const languageConfigs = {
     placeholder: "Type Marathi question here...",
     mockText: "कॉर्पोरेशन म्हणजे काय?",
     presets: [
-      { title: "🏢 कॉर्पोरेशन व्याख्या", text: "कॉर्पोरेशन म्हणजे काय?" },
-      { title: "🥔 कमी पोटॅशियम", text: "कमी पोटॅशियम असलेल्या पदार्थांचा चार्ट।" },
-      { title: "📖 कार्सन कार्सन", text: "रेचल कार्सनने सायलेंट स्प्रिंग का लिहिले?" }
+      { title: "कॉर्पोरेशन व्याख्या", text: "कॉर्पोरेशन म्हणजे काय?" },
+      { title: "कमी पोटॅशियम", text: "कमी पोटॅशियम असलेल्या पदार्थांचा चार्ट।" },
+      { title: "कार्सन कार्सन", text: "रेचल कार्सनने सायलेंट स्प्रिंग का लिहिले?" }
     ]
   },
   te: {
@@ -61,8 +61,8 @@ const languageConfigs = {
     placeholder: "Type Telugu question here...",
     mockText: "కార్పొరేషన్ అంటే ఏమిటి?",
     presets: [
-      { title: "🏢 కార్పొరేషన్", text: "కార్పొరేషన్ అంటే ఏమిటి?" },
-      { title: "🥔 తక్కువ పొటాషియం", text: "పొటాషియం తక్కువగా ఉండే ఆహారాల చార్ట్." }
+      { title: "కార్పొరేషన్", text: "కార్పొరేషన్ అంటే ఏమిటి?" },
+      { title: "తక్కువ పొటాషియం", text: "పొటాషియం తక్కువగా ఉండే ఆహారాల చార్ట్." }
     ]
   },
   ta: {
@@ -70,8 +70,8 @@ const languageConfigs = {
     placeholder: "Type Tamil question here...",
     mockText: "கார்ப்பரேஷன் என்றால் என்ன?",
     presets: [
-      { title: "🏢 கார்ப்பரேஷன்", text: "கார்ப்பரேஷன் என்றால் என்ன?" },
-      { title: "🥔 குறைந்த பொட்டாசியம்", text: "குறைந்த பொட்டாசியம் உணவுகளின் விளக்கப்படம்." }
+      { title: "கார்ப்பரேஷன்", text: "கார்ப்பரேஷன் என்றால் என்ன?" },
+      { title: "குறைந்த பொட்டாசியம்", text: "குறைந்த பொட்டாசியம் உணவுகளின் விளக்கப்படம்." }
     ]
   }
 };
@@ -453,11 +453,11 @@ export default function App() {
             <div className="flex items-center gap-2">
               {apiStatus.live_mode_ready ? (
                 <span className="text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 px-3 py-1 rounded-full animate-pulse">
-                  🟢 Live API Mode (Groq/Sarvam)
+                  Live API Mode (Groq/Sarvam)
                 </span>
               ) : (
                 <span className="text-xs font-semibold bg-amber-950/80 text-amber-400 border border-amber-800/50 px-3 py-1 rounded-full">
-                  🟡 Demo Mode (Simulated APIs)
+                  Demo Mode (Simulated APIs)
                 </span>
               )}
             </div>
@@ -709,7 +709,10 @@ export default function App() {
                     Executing Pipeline...
                   </>
                 ) : (
-                  "🚀 Execute pipeline"
+                  <span className="flex items-center justify-center gap-1.5">
+                    <Play className="h-4 w-4" />
+                    Execute pipeline
+                  </span>
                 )}
               </button>
 
@@ -838,7 +841,7 @@ export default function App() {
                     
                     {/* Safety */}
                     <div className="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
-                      <span className="text-xs text-slate-300">🛡️ Input Safety</span>
+                      <span className="text-xs text-slate-300">Input Safety</span>
                       {response.guardrails.safety.safe ? (
                         <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-900/40">Passed</span>
                       ) : (
@@ -848,7 +851,7 @@ export default function App() {
 
                     {/* Off-Topic */}
                     <div className="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
-                      <span className="text-xs text-slate-300">🔍 Topic Scope</span>
+                      <span className="text-xs text-slate-300">Topic Scope</span>
                       {!response.guardrails.off_topic ? (
                         <span className="text-[10px] bg-slate-900 text-slate-500 px-2 py-0.5 rounded font-bold">Skipped</span>
                       ) : response.guardrails.off_topic.on_topic ? (
@@ -860,7 +863,7 @@ export default function App() {
 
                     {/* Groundedness */}
                     <div className="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
-                      <span className="text-xs text-slate-300">⚖️ Grounded Context</span>
+                      <span className="text-xs text-slate-300">Grounded Context</span>
                       {!response.guardrails.groundedness ? (
                         <span className="text-[10px] bg-slate-900 text-slate-500 px-2 py-0.5 rounded font-bold">Skipped</span>
                       ) : response.guardrails.groundedness.grounded ? (
@@ -883,7 +886,7 @@ export default function App() {
               {/* Context passages */}
               <div className="bg-slate-955/70 border border-slate-800/70 rounded-2xl p-6 backdrop-blur-md shadow-xl">
                 <h3 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-4">
-                  📚 Retrieved Context Chunks from FAISS
+                  Retrieved Context Chunks from FAISS
                 </h3>
                 <div className="flex flex-col gap-4">
                   {response.chunks && response.chunks.length > 0 ? (
