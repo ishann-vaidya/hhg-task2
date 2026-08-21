@@ -25,7 +25,7 @@ class VoiceRAGPipeline:
         self.stt = SarvamSTT(model=stt_model)
         self.retriever = VectorRetriever(strategy=strategy, language=language)
         self.generator = RAGOrchestrator(model=groq_model, language=language)
-        self.guardrails = RAGGuardrails(off_topic_threshold=off_topic_threshold)
+        self.guardrails = RAGGuardrails(off_topic_threshold=off_topic_threshold, language=language)
 
     def run_pipeline(
         self,
