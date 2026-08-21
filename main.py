@@ -7,6 +7,11 @@ import time
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
+
+# Load credentials from .env
+load_dotenv()
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
