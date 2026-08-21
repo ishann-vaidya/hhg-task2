@@ -123,10 +123,18 @@ class RAGOrchestrator:
         # Check API key or mock flag
         if mock or not self.api_key:
             time.sleep(0.120)  # simulate API latency
-            ans = (
-                mock_answer
-                or "निगम एक कानूनी इकाई है जिसे लोगों के समूह द्वारा एक एकल इकाई के रूप में कार्य करने के लिए अधिकृत किया जाता है।"
-            )
+            
+            # Use language-specific mock fallbacks to prevent word-overlap guardrail failures
+            mock_fallbacks = {
+                "en": "A corporation is a company or group of people authorized to act as a single entity under the law.",
+                "hi": "निगम एक कानूनी इकाई है जिसे लोगों के समूह द्वारा एक एकल इकाई के रूप में कार्य करने के लिए अधिकृत किया जाता है।",
+                "mr": "कॉर्पोरेशन म्हणजे एक कंपनी किंवा लोकांचा समूह ज्याला एकल संस्था म्हणून काम करण्याचा अधिकार आहे.",
+                "te": "కార్పొరేషన్ అంటే చట్టం ప్రకారం ఒకే సంస్థగా వ్యవహరించడానికి అధికారం కలిగిన వ్యక్తుల సమూహం.",
+                "ta": "கார்ப்பரேஷன் என்பது சட்டத்தின் கீழ் ஒரு தனி அமைப்பாக செயல்பட அங்கீகரிக்கப்பட்ட மக்கள் குழுவாகும்."
+            }
+            default_ans = mock_fallbacks.get(self.language, mock_fallbacks["en"])
+            
+            ans = mock_answer or default_ans
             citations = [c.get("passage_id", "q101_p0") for c in input_data.chunks]
             latency_ms = (time.perf_counter() - start_time) * 1000
 
