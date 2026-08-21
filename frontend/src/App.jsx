@@ -76,6 +76,152 @@ const languageConfigs = {
   }
 };
 
+// ── Interactive WebGL-Style Canvas Background ──
+function CanvasBackground({ isRecording, isLoading }) {
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    let animationFrameId;
+
+    let width = (canvas.width = window.innerWidth);
+    let height = (canvas.height = window.innerHeight);
+
+    const handleResize = () => {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    };
+    window.addEventListener("resize", handleResize);
+
+    // Dynamic node connections
+    const numParticles = 75;
+    const particles = [];
+    for (let i = 0; i < numParticles; i++) {
+      particles.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        vx: (Math.random() - 0.5) * 0.45,
+        vy: (Math.random() - 0.5) * 0.45,
+        radius: Math.random() * 1.5 + 1
+      });
+    }
+
+    let mouse = { x: null, y: null };
+    const handleMouseMove = (e) => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+    };
+    const handleMouseLeave = () => {
+      mouse.x = null;
+      mouse.y = null;
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseleave", handleMouseLeave);
+
+    let wavePhase = 0;
+
+    const animate = () => {
+      ctx.clearRect(0, 0, width, height);
+
+      // Deep obsidian space gradient background
+      const gradient = ctx.createRadialGradient(
+        width / 2, height / 2, 10,
+        width / 2, height / 2, Math.max(width, height)
+      );
+      gradient.addColorStop(0, "#080c1d");
+      gradient.addColorStop(1, "#02040a");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+
+      // Render neural network nodes
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < numParticles; i++) {
+        const p1 = particles[i];
+        
+        // Move particle
+        p1.x += p1.vx;
+        p1.y += p1.vy;
+
+        // Boundaries bounce check
+        if (p1.x < 0 || p1.x > width) p1.vx *= -1;
+        if (p1.y < 0 || p1.y > height) p1.vy *= -1;
+
+        // Magnetic repulsion from user mouse cursor
+        if (mouse.x !== null && mouse.y !== null) {
+          const dx = mouse.x - p1.x;
+          const dy = mouse.y - p1.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 120) {
+            const force = (120 - dist) / 120;
+            p1.x -= dx / dist * force * 0.7;
+            p1.y -= dy / dist * force * 0.7;
+          }
+        }
+
+        // Draw particle node
+        ctx.fillStyle = "rgba(99, 102, 241, 0.35)";
+        ctx.beginPath();
+        ctx.arc(p1.x, p1.y, p1.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Connect nodes near to each other
+        for (let j = i + 1; j < numParticles; j++) {
+          const p2 = particles[j];
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (dist < 110) {
+            const alpha = (110 - dist) / 110 * 0.12;
+            ctx.strokeStyle = `rgba(99, 102, 241, ${alpha})`;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Renders dynamic Voice-Waves representing active voice frequencies
+      wavePhase += isRecording ? 0.16 : isLoading ? 0.08 : 0.015;
+      const waveAmplitude = isRecording ? 48 : isLoading ? 22 : 6;
+      const numWaves = 3;
+
+      for (let w = 0; w < numWaves; w++) {
+        ctx.beginPath();
+        ctx.lineWidth = 1 + w * 0.5;
+        ctx.strokeStyle = `rgba(99, 102, 241, ${0.07 - w * 0.02})`;
+        
+        const offset = w * Math.PI / 3;
+        for (let x = 0; x < width; x += 10) {
+          const y = height * 0.88 + Math.sin(x * 0.0035 + wavePhase + offset) * waveAmplitude * Math.cos(x * 0.0008);
+          if (x === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+      }
+
+      animationFrameId = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseleave", handleMouseLeave);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isRecording, isLoading]);
+
+  return <canvas ref={canvasRef} className="fixed inset-0 w-full h-full -z-10 pointer-events-none" />;
+}
+
 export default function App() {
   // Config state
   const [strategy, setStrategy] = useState("metadata_aware");
@@ -276,12 +422,16 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased">
+    <div className="min-h-screen text-slate-100 flex flex-col antialiased relative">
+      
+      {/* Dynamic Animated Wave Background */}
+      <CanvasBackground isRecording={isRecording} isLoading={loading} />
+
       {/* ── Top Header Bar ── */}
-      <header className="border-b border-slate-800 bg-slate-900/60 backdrop-blur-md px-6 py-4 sticky top-0 z-40">
+      <header className="border-b border-slate-800 bg-slate-950/60 backdrop-blur-lg px-6 py-4 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-600/20">
+            <div className="bg-indigo-650 p-2.5 rounded-xl shadow-lg shadow-indigo-600/20">
               <Mic className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -295,14 +445,14 @@ export default function App() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span className="text-xs text-slate-300 font-medium bg-slate-800/80 px-2.5 py-1 rounded-full border border-slate-700">
+              <span className="text-xs text-slate-300 font-medium bg-slate-900/80 px-2.5 py-1 rounded-full border border-slate-700">
                 Backend Status: Connected
               </span>
             </div>
 
             <div className="flex items-center gap-2">
               {apiStatus.live_mode_ready ? (
-                <span className="text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 px-3 py-1 rounded-full">
+                <span className="text-xs font-semibold bg-emerald-950/80 text-emerald-400 border border-emerald-800/50 px-3 py-1 rounded-full animate-pulse">
                   🟢 Live API Mode (Groq/Sarvam)
                 </span>
               ) : (
@@ -316,13 +466,13 @@ export default function App() {
       </header>
 
       {/* ── Main Layout Workspace ── */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
         
         {/* ── Left Column: Config Panel ── */}
         <section className="lg:col-span-4 flex flex-col gap-6">
           
           {/* Strategy & Language Controls Card */}
-          <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-md">
+          <div className="bg-slate-950/70 border border-slate-800/70 rounded-2xl p-5 backdrop-blur-md shadow-xl">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
                 <Sliders className="h-4 w-4 text-indigo-400" />
@@ -345,7 +495,7 @@ export default function App() {
                   <select
                     value={language}
                     onChange={(e) => handleLanguageChange(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer transition-colors"
                   >
                     {Object.entries(languageConfigs).map(([code, cfg]) => (
                       <option key={code} value={code}>
@@ -361,7 +511,7 @@ export default function App() {
                   <select
                     value={strategy}
                     onChange={(e) => setStrategy(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+                    className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2 px-3 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer transition-colors"
                   >
                     <option value="metadata_aware">Metadata-Aware (Paragraph first)</option>
                     <option value="semantic">Semantic (Similarity splits)</option>
@@ -398,7 +548,7 @@ export default function App() {
                       checked={isMock}
                       onChange={(e) => setIsMock(e.target.checked)}
                       disabled={!apiStatus.live_mode_ready}
-                      className="h-4.5 w-4.5 rounded border-slate-800 text-indigo-600 focus:ring-indigo-500 accent-indigo-500 cursor-pointer"
+                      className="h-4.5 w-4.5 rounded border-slate-850 text-indigo-600 focus:ring-indigo-500 accent-indigo-500 cursor-pointer"
                     />
                   </div>
                 </div>
@@ -407,35 +557,35 @@ export default function App() {
           </div>
 
           {/* Latency Percentiles Analytics Board */}
-          <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-5 backdrop-blur-md">
+          <div className="bg-slate-950/70 border border-slate-800/70 rounded-2xl p-5 backdrop-blur-md shadow-xl">
             <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider mb-4 flex items-center gap-2">
               <Activity className="h-4 w-4 text-indigo-400" />
               Latency analytics (P50/P70/P100)
             </h2>
             {latencyReport ? (
               <div className="flex flex-col gap-3">
-                <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-900 flex justify-between items-center">
+                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-900/60 flex justify-between items-center">
                   <span className="text-xs text-slate-400">STT Time (Mock)</span>
                   <div className="text-xs text-slate-300 font-semibold flex gap-2">
                     <span>P50: <b className="text-indigo-300">{latencyReport.summary.stt?.p50}ms</b></span>
                     <span>P99: <b className="text-indigo-400">{latencyReport.summary.stt?.p100}ms</b></span>
                   </div>
                 </div>
-                <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-900 flex justify-between items-center">
+                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-900/60 flex justify-between items-center">
                   <span className="text-xs text-slate-400">Retrieval (FAISS)</span>
                   <div className="text-xs text-slate-300 font-semibold flex gap-2">
                     <span>P50: <b className="text-indigo-300">{latencyReport.summary.retrieval?.p50}ms</b></span>
                     <span>P99: <b className="text-indigo-400">{latencyReport.summary.retrieval?.p100}ms</b></span>
                   </div>
                 </div>
-                <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-900 flex justify-between items-center">
+                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-900/60 flex justify-between items-center">
                   <span className="text-xs text-slate-400">LLM Generation</span>
                   <div className="text-xs text-slate-300 font-semibold flex gap-2">
                     <span>P50: <b className="text-indigo-300">{latencyReport.summary.generation?.p50}ms</b></span>
                     <span>P99: <b className="text-indigo-400">{latencyReport.summary.generation?.p100}ms</b></span>
                   </div>
                 </div>
-                <div className="bg-slate-950/60 p-3 rounded-lg border border-slate-900 flex justify-between items-center">
+                <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-900/60 flex justify-between items-center">
                   <span className="text-xs text-slate-400 font-medium">Total pipeline E2E</span>
                   <div className="text-xs text-slate-200 font-bold flex gap-2">
                     <span>P50: <b className="text-indigo-400">{latencyReport.summary.total?.p50}ms</b></span>
@@ -457,10 +607,10 @@ export default function App() {
         <section className="lg:col-span-8 flex flex-col gap-6">
           
           {/* Voice Input Dashboard Console */}
-          <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-md">
+          <div className="bg-slate-950/70 border border-slate-800/70 rounded-2xl p-6 backdrop-blur-md shadow-xl">
             <h2 className="text-md font-semibold text-slate-200 mb-4">Input Console</h2>
             
-            <div className="flex flex-col items-center justify-center py-6 bg-slate-950/40 rounded-2xl border border-slate-900/60 mb-6">
+            <div className="flex flex-col items-center justify-center py-6 bg-slate-900/40 rounded-2xl border border-slate-850/60 mb-6">
               
               {/* Pulsing Mic Aura */}
               <div className="relative mb-4">
@@ -469,9 +619,9 @@ export default function App() {
                   disabled={loading}
                   className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
                     isRecording 
-                      ? "bg-red-600 shadow-red-500/50 shadow-lg scale-105" 
-                      : "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/35 shadow-lg hover:scale-105"
-                  } disabled:opacity-50`}
+                      ? "bg-red-650 shadow-red-500/50 shadow-xl scale-105" 
+                      : "bg-indigo-600 hover:bg-indigo-550 shadow-indigo-500/25 shadow-lg hover:scale-105"
+                  } disabled:opacity-50 cursor-pointer`}
                 >
                   {isRecording ? (
                     <MicOff className="h-8 w-8 text-white" />
@@ -504,7 +654,7 @@ export default function App() {
             <div className="flex flex-col md:flex-row gap-4 mb-4">
               <div className="flex-1">
                 <label className="text-xs text-slate-400 block mb-1 font-medium">Or upload spoken audio file</label>
-                <div className="flex items-center bg-slate-950 border border-slate-900 rounded-lg p-1">
+                <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-1">
                   <input
                     type="file"
                     accept="audio/wav, audio/mp3, audio/webm"
@@ -515,7 +665,7 @@ export default function App() {
                         setAudioUrl("");
                       }
                     }}
-                    className="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-900 file:text-indigo-400 hover:file:bg-slate-850 cursor-pointer"
+                    className="block w-full text-xs text-slate-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-950 file:text-indigo-400 hover:file:bg-slate-900 cursor-pointer"
                   />
                 </div>
               </div>
@@ -527,7 +677,7 @@ export default function App() {
                   placeholder={languageConfigs[language].placeholder}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-900 rounded-lg py-2.5 px-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg py-2.5 px-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
                 />
               </div>
             </div>
@@ -539,7 +689,7 @@ export default function App() {
                 <button
                   key={idx}
                   onClick={() => loadPreset(p.text)}
-                  className="text-[11px] bg-indigo-950/40 text-indigo-300 hover:bg-indigo-950/80 border border-indigo-900/60 px-2.5 py-1 rounded-md transition-colors"
+                  className="text-[11px] bg-indigo-950/40 text-indigo-300 hover:bg-indigo-950/70 border border-indigo-900/50 px-2.5 py-1 rounded-md transition-colors cursor-pointer"
                 >
                   {p.title}
                 </button>
@@ -551,7 +701,7 @@ export default function App() {
               <button
                 onClick={executePipeline}
                 disabled={loading}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold py-2.5 px-4 rounded-lg shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                className="flex-1 bg-indigo-650 hover:bg-indigo-650 text-white text-sm font-semibold py-2.5 px-4 rounded-lg shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {loading ? (
                   <>
@@ -565,7 +715,7 @@ export default function App() {
 
               <button
                 onClick={resetInputs}
-                className="bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-slate-200 text-sm font-medium py-2.5 px-4 rounded-lg transition-all"
+                className="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-250 text-sm font-medium py-2.5 px-4 rounded-lg transition-all cursor-pointer"
               >
                 Reset
               </button>
@@ -577,7 +727,7 @@ export default function App() {
             <div className="flex flex-col gap-6 animate-fadeIn">
               
               {/* Output & Transcription Card */}
-              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-md">
+              <div className="bg-slate-950/70 border border-slate-800/70 rounded-2xl p-6 backdrop-blur-md shadow-xl">
                 <h3 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <FileText className="h-4 w-4" />
                   Processed Output
@@ -586,7 +736,7 @@ export default function App() {
                 {/* Transcription display */}
                 <div className="mb-4">
                   <span className="text-[10px] text-slate-500 block mb-1">STT Transcription query:</span>
-                  <p className="text-md font-medium text-slate-200 bg-slate-950/60 p-3 rounded-lg border border-slate-900/60 italic">
+                  <p className="text-md font-medium text-slate-250 bg-slate-900/50 p-3 rounded-lg border border-slate-850/60 italic">
                     "{response.query}"
                   </p>
                 </div>
@@ -596,8 +746,8 @@ export default function App() {
                   <span className="text-[10px] text-slate-500 block mb-1">Synthesized Answer:</span>
                   <div className={`p-4 rounded-xl border leading-relaxed text-sm font-medium ${
                     response.status.includes("blocked")
-                      ? "bg-red-950/30 text-red-400 border-red-900/40"
-                      : "bg-slate-950/60 text-slate-100 border-slate-900/60"
+                      ? "bg-red-950/20 text-red-400 border-red-900/35"
+                      : "bg-slate-900/50 text-slate-100 border-slate-850/60"
                   }`}>
                     {response.answer}
                   </div>
@@ -605,10 +755,10 @@ export default function App() {
 
                 {/* Citations display */}
                 {response.citations && response.citations.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-slate-800/60">
+                  <div className="mt-4 pt-4 border-t border-slate-850/60">
                     <button
                       onClick={() => setOpenCitations(!openCitations)}
-                      className="text-xs text-indigo-400 flex items-center gap-1 font-semibold hover:text-indigo-300"
+                      className="text-xs text-indigo-400 flex items-center gap-1 font-semibold hover:text-indigo-300 cursor-pointer"
                     >
                       References Used ({response.citations.length})
                       {openCitations ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
@@ -617,8 +767,8 @@ export default function App() {
                       <div className="mt-2 flex flex-col gap-1.5">
                         {response.citations.map((c, i) => (
                           <div key={i} className="text-xs text-slate-400 flex items-center gap-2">
-                            <CornerDownRight className="h-3.5 w-3.5 text-slate-600" />
-                            <span>Passage ID: <code className="text-indigo-300 bg-slate-950 px-1 rounded">{c}</code></span>
+                            <CornerDownRight className="h-3.5 w-3.5 text-slate-650" />
+                            <span>Passage ID: <code className="text-indigo-300 bg-slate-900 px-1 rounded">{c}</code></span>
                           </div>
                         ))}
                       </div>
@@ -631,13 +781,13 @@ export default function App() {
                   <div className="mt-2">
                     <button
                       onClick={() => setOpenReasoning(!openReasoning)}
-                      className="text-xs text-indigo-400 flex items-center gap-1 font-semibold hover:text-indigo-300"
+                      className="text-xs text-indigo-400 flex items-center gap-1 font-semibold hover:text-indigo-300 cursor-pointer"
                     >
                       Show reasoning trace
                       {openReasoning ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </button>
                     {openReasoning && (
-                      <div className="mt-2 p-3 bg-slate-950/80 rounded-lg border border-slate-900 text-xs text-slate-400 font-mono leading-relaxed whitespace-pre-line">
+                      <div className="mt-2 p-3 bg-slate-900/80 rounded-lg border border-slate-850 text-xs text-slate-400 font-mono leading-relaxed whitespace-pre-line">
                         {response.reasoning}
                       </div>
                     )}
@@ -646,7 +796,7 @@ export default function App() {
               </div>
 
               {/* Execution Flow & Guardrail Timeline Panel */}
-              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-md grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-slate-950/70 border border-slate-800/70 rounded-2xl p-6 backdrop-blur-md shadow-xl grid grid-cols-1 md:grid-cols-2 gap-6">
                 
                 {/* Latency break down */}
                 <div>
@@ -655,23 +805,23 @@ export default function App() {
                     Latency trace
                   </h3>
                   <div className="flex flex-col gap-2">
-                    <div className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-lg border border-slate-900/60">
+                    <div className="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
                       <span className="text-xs text-slate-400">Speech-To-Text</span>
                       <span className="text-xs text-slate-300 font-semibold">{response.latencies.stt?.toFixed(1)} ms</span>
                     </div>
-                    <div className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-lg border border-slate-900/60">
+                    <div className="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
                       <span className="text-xs text-slate-400">Safety Check</span>
                       <span className="text-xs text-slate-300 font-semibold">{response.latencies.safety_guard?.toFixed(1)} ms</span>
                     </div>
-                    <div className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-lg border border-slate-900/60">
+                    <div className="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
                       <span className="text-xs text-slate-400">FAISS retrieval</span>
                       <span className="text-xs text-slate-300 font-semibold">{response.latencies.retrieval?.toFixed(1)} ms</span>
                     </div>
-                    <div className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-lg border border-slate-900/60">
+                    <div className="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
                       <span className="text-xs text-slate-400">LLM Generation</span>
                       <span className="text-xs text-slate-300 font-semibold">{response.latencies.generation?.toFixed(1)} ms</span>
                     </div>
-                    <div className="flex justify-between items-center bg-slate-950/60 p-2.5 rounded-lg border border-indigo-900/40">
+                    <div className="flex justify-between items-center bg-slate-900/70 p-2.5 rounded-lg border border-indigo-950/40">
                       <span className="text-xs text-slate-200 font-semibold">Total pipeline latency</span>
                       <span className="text-xs text-indigo-400 font-bold">{response.latencies.total?.toFixed(1)} ms</span>
                     </div>
@@ -687,42 +837,42 @@ export default function App() {
                   <div className="flex flex-col gap-2.5">
                     
                     {/* Safety */}
-                    <div className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-lg border border-slate-900/60">
+                    <div className="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
                       <span className="text-xs text-slate-300">🛡️ Input Safety</span>
                       {response.guardrails.safety.safe ? (
-                        <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-900">Passed</span>
+                        <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-900/40">Passed</span>
                       ) : (
-                        <span className="text-[10px] bg-red-950 text-red-400 px-2 py-0.5 rounded font-bold border border-red-900">Violation</span>
+                        <span className="text-[10px] bg-red-950 text-red-400 px-2 py-0.5 rounded font-bold border border-red-900/40">Violation</span>
                       )}
                     </div>
 
                     {/* Off-Topic */}
-                    <div className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-lg border border-slate-900/60">
+                    <div className="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
                       <span className="text-xs text-slate-300">🔍 Topic Scope</span>
                       {!response.guardrails.off_topic ? (
                         <span className="text-[10px] bg-slate-900 text-slate-500 px-2 py-0.5 rounded font-bold">Skipped</span>
                       ) : response.guardrails.off_topic.on_topic ? (
-                        <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-900">Passed</span>
+                        <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-900/40">Passed</span>
                       ) : (
-                        <span className="text-[10px] bg-red-950 text-red-400 px-2 py-0.5 rounded font-bold border border-red-900">Off-topic</span>
+                        <span className="text-[10px] bg-red-950 text-red-400 px-2 py-0.5 rounded font-bold border border-red-900/40">Off-topic</span>
                       )}
                     </div>
 
                     {/* Groundedness */}
-                    <div className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-lg border border-slate-900/60">
+                    <div className="flex justify-between items-center bg-slate-900/40 p-2.5 rounded-lg border border-slate-850/60">
                       <span className="text-xs text-slate-300">⚖️ Grounded Context</span>
                       {!response.guardrails.groundedness ? (
                         <span className="text-[10px] bg-slate-900 text-slate-500 px-2 py-0.5 rounded font-bold">Skipped</span>
                       ) : response.guardrails.groundedness.grounded ? (
-                        <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-900">Grounded</span>
+                        <span className="text-[10px] bg-emerald-950 text-emerald-400 px-2 py-0.5 rounded font-bold border border-emerald-900/40">Grounded</span>
                       ) : (
-                        <span className="text-[10px] bg-red-950 text-red-400 px-2 py-0.5 rounded font-bold border border-red-900">Hallucination</span>
+                        <span className="text-[10px] bg-red-950 text-red-400 px-2 py-0.5 rounded font-bold border border-red-900/40">Hallucination</span>
                       )}
                     </div>
                   </div>
                   {/* Block explanation message if any */}
                   {response.status !== "success" && (
-                    <div className="mt-3 text-xs bg-red-950/20 text-red-400/80 p-2 rounded-lg border border-red-900/30 flex items-start gap-2">
+                    <div className="mt-3 text-xs bg-red-950/20 text-red-400/80 p-2 rounded-lg border border-red-900/30 flex items-start gap-2 animate-pulse">
                       <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                       <span>{response.answer}</span>
                     </div>
@@ -731,16 +881,16 @@ export default function App() {
               </div>
 
               {/* Context passages */}
-              <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 backdrop-blur-md">
+              <div className="bg-slate-955/70 border border-slate-800/70 rounded-2xl p-6 backdrop-blur-md shadow-xl">
                 <h3 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-4">
                   📚 Retrieved Context Chunks from FAISS
                 </h3>
                 <div className="flex flex-col gap-4">
                   {response.chunks && response.chunks.length > 0 ? (
                     response.chunks.map((c, i) => (
-                      <div key={i} className="bg-slate-950/60 p-4 rounded-xl border border-slate-900/60">
+                      <div key={i} className="bg-slate-900/50 p-4 rounded-xl border border-slate-850/60">
                         <div className="flex justify-between text-xs mb-2">
-                          <span className="text-indigo-400 font-semibold">Chunk [{i}] ID: <code className="bg-slate-900 px-1 rounded">{c.passage_id}</code></span>
+                          <span className="text-indigo-400 font-semibold">Chunk [{i}] ID: <code className="bg-slate-950 px-1 rounded">{c.passage_id}</code></span>
                           <span className="text-emerald-400 font-semibold">Similarity: {c.similarity_score.toFixed(4)}</span>
                         </div>
                         <p className="text-xs text-slate-300 leading-relaxed font-light">{c.text}</p>
