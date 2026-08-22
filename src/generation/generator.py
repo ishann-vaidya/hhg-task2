@@ -53,7 +53,7 @@ class RAGOrchestrator:
     def __init__(
         self,
         api_key: str | None = None,
-        model: str = "llama3-8b-8192",
+        model: str = "groq/compound-mini",
         language: str = "hi",
     ):
         self.api_key = api_key or os.getenv("GROQ_API_KEY")

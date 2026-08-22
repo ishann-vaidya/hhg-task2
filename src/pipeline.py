@@ -18,7 +18,7 @@ class VoiceRAGPipeline:
         strategy: str = "metadata_aware",
         language: str = "hi",
         off_topic_threshold: float = 0.42,
-        groq_model: str = "llama3-8b-8192",
+        groq_model: str = "groq/compound-mini",
         stt_model: str = "saaras:v3",
     ):
         self.language = language
