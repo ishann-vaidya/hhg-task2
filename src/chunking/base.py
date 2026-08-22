@@ -5,17 +5,16 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-import tiktoken
-
 from config.settings import CHUNK_SIZE_TOKENS
 
 # Lazy singleton — tiktoken encodings are expensive to create
-_ENCODER: tiktoken.Encoding | None = None
+_ENCODER: Any | None = None
 
 
-def get_token_encoder() -> tiktoken.Encoding:
+def get_token_encoder() -> Any:
     global _ENCODER
     if _ENCODER is None:
+        import tiktoken
         _ENCODER = tiktoken.get_encoding("cl100k_base")
     return _ENCODER
 
@@ -24,7 +23,11 @@ def count_tokens(text: str) -> int:
     """Approximate token count (works reasonably for English + Indic text)."""
     if not text:
         return 0
-    return len(get_token_encoder().encode(text))
+    try:
+        encoder = get_token_encoder()
+        return len(encoder.encode(text))
+    except Exception:
+        return max(1, len(text) // 4)
 
 
 @dataclass

@@ -10,7 +10,6 @@ os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
-import faiss
 import numpy as np
 
 from config.settings import INDEX_DIR, RETRIEVAL_EMBEDDING_MODEL
@@ -108,8 +107,9 @@ class ChunkIndexer:
         self,
         chunks: list[Chunk],
         batch_size: int = 64,
-    ) -> tuple[faiss.IndexFlatIP, list[dict[str, Any]]]:
+    ) -> tuple[Any, list[dict[str, Any]]]:
         """Generate normalized embeddings and build a FAISS flat IP index (cosine similarity)."""
+        import faiss
         if not chunks:
             raise ValueError("No chunks provided to index.")
 
@@ -125,11 +125,12 @@ class ChunkIndexer:
 
     def save_index(
         self,
-        index: faiss.IndexFlatIP,
+        index: Any,
         metadata_list: list[dict[str, Any]],
         output_dir: Path,
     ) -> None:
         """Serialize FAISS index and metadata JSON to disk."""
+        import faiss
         output_dir.mkdir(parents=True, exist_ok=True)
         faiss_path = output_dir / "index.faiss"
         meta_path = output_dir / "metadata.json"
@@ -138,8 +139,9 @@ class ChunkIndexer:
         with meta_path.open("w", encoding="utf-8") as f:
             json.dump(metadata_list, f, ensure_ascii=False, indent=2)
 
-    def load_index(self, input_dir: Path) -> tuple[faiss.IndexFlatIP, list[dict[str, Any]]]:
+    def load_index(self, input_dir: Path) -> tuple[Any, list[dict[str, Any]]]:
         """Load FAISS index and metadata JSON from disk, automatically generating fallback if missing."""
+        import faiss
         faiss_path = input_dir / "index.faiss"
         meta_path = input_dir / "metadata.json"
 

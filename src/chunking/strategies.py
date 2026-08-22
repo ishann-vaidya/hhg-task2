@@ -6,7 +6,6 @@ import re
 from typing import Any
 
 import numpy as np
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from config.settings import (
     CHUNK_OVERLAP_TOKENS,
@@ -89,6 +88,8 @@ def chunk_fixed_size(
 
     Uses LangChain's RecursiveCharacterTextSplitter with token counting.
     """
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
     metadata = metadata or {}
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
@@ -112,6 +113,8 @@ def chunk_fixed_overlap(
 
     Overlap helps retrieval catch facts that would otherwise sit on a chunk boundary.
     """
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
     metadata = metadata or {}
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,

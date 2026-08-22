@@ -7,12 +7,6 @@ from typing import Any
 
 import httpx
 from pydantic import BaseModel, Field
-from tenacity import (
-    retry,
-    retry_if_exception_type,
-    stop_after_attempt,
-    wait_exponential,
-)
 
 
 class GenerationInput(BaseModel):
@@ -72,19 +66,13 @@ class RAGOrchestrator:
         }
         self.language_name = language_names.get(language, "Hindi")
 
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type(httpx.HTTPError),
-        reraise=True,
-    )
     def _call_groq_api(
         self,
         messages: list[dict[str, str]],
         max_tokens: int,
         temperature: float,
     ) -> dict[str, Any]:
-        """Perform the actual POST request to Groq API with retries."""
+        """Perform POST request to Groq API with native exponential backoff retries."""
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -97,18 +85,29 @@ class RAGOrchestrator:
             "response_format": {"type": "json_object"},
         }
 
-        # Track retries using tenacity hook or wrapper increment
-        self._retry_count += 1
-        response = httpx.post(self.api_url, headers=headers, json=payload, timeout=15.0)
+        max_attempts = 3
+        last_exception = None
+        for attempt in range(max_attempts):
+            try:
+                if attempt > 0:
+                    self._retry_count += 1
+                    time.sleep(2 ** attempt)
 
-        if response.status_code != 200:
-            raise httpx.HTTPStatusError(
-                f"Groq API error {response.status_code}: {response.text}",
-                request=response.request,
-                response=response,
-            )
+                response = httpx.post(self.api_url, headers=headers, json=payload, timeout=15.0)
+                if response.status_code == 200:
+                    return response.json()
+                
+                raise httpx.HTTPStatusError(
+                    f"Groq API error {response.status_code}: {response.text}",
+                    request=response.request,
+                    response=response,
+                )
+            except httpx.HTTPError as e:
+                last_exception = e
+                if attempt == max_attempts - 1:
+                    raise last_exception
 
-        return response.json()
+        raise last_exception or RuntimeError("Groq API call failed after retries")
 
     def generate_answer(
         self,
