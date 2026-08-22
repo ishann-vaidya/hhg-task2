@@ -125,11 +125,8 @@ class VectorRetriever:
         # Time the retrieval process
         start_time = time.perf_counter()
 
-        model = self.indexer._get_model()
-        # Encode query and normalize for cosine similarity via inner product
-        import torch
-        with torch.inference_mode():
-            query_vector = model.encode([query], normalize_embeddings=True).astype("float32")
+        # Encode query using serverless HF API (0 MB RAM) with CPU PyTorch fallback
+        query_vector = self.indexer.encode_texts([query])
 
         # Search index
         scores, indices = self.index.search(query_vector, top_k)

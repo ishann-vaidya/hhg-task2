@@ -51,6 +51,43 @@ class ChunkIndexer:
             self.model = model
         return self.model
 
+    def encode_texts(self, texts: list[str]) -> np.ndarray:
+        """Generate normalized 384-dim embeddings using HF Inference API (0 MB RAM) with CPU PyTorch fallback."""
+        import logging
+        import httpx
+
+        logger = logging.getLogger(__name__)
+
+        # 1. Try Hugging Face Serverless Inference API first (0 MB RAM overhead, 0 PyTorch load)
+        try:
+            url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{self.model_name}"
+            response = httpx.post(url, json={"inputs": texts}, timeout=10.0)
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, list) and len(data) > 0:
+                    embeddings = np.array(data).astype("float32")
+                    if embeddings.ndim == 3:
+                        embeddings = np.mean(embeddings, axis=1)
+                    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+                    norms[norms == 0] = 1.0
+                    embeddings = embeddings / norms
+                    logger.info("Generated %d embeddings via HF Inference API (0 MB RAM used).", len(texts))
+                    return embeddings
+        except Exception as e:
+            logger.warning("HF Inference API embedding fallback to local: %s", e)
+
+        # 2. Fallback to local CPU PyTorch model if API is unavailable
+        model = self._get_model()
+        import torch
+
+        with torch.inference_mode():
+            embeddings = model.encode(
+                texts,
+                show_progress_bar=False,
+                normalize_embeddings=True,
+            )
+        return np.array(embeddings).astype("float32")
+
     def build_index(
         self,
         chunks: list[Chunk],
@@ -60,19 +97,8 @@ class ChunkIndexer:
         if not chunks:
             raise ValueError("No chunks provided to index.")
 
-        model = self._get_model()
         texts = [chunk.text for chunk in chunks]
-
-        # Generate normalized embeddings (inner product corresponds to cosine similarity)
-        import torch
-        with torch.inference_mode():
-            embeddings = model.encode(
-                texts,
-                batch_size=batch_size,
-                show_progress_bar=False,
-                normalize_embeddings=True,
-            )
-        embeddings = np.array(embeddings).astype("float32")
+        embeddings = self.encode_texts(texts)
 
         dimension = embeddings.shape[1]
         index = faiss.IndexFlatIP(dimension)
