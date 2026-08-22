@@ -1,24 +1,26 @@
-# Phase 0 — data exploration
-datasets>=2.19.0
-huggingface-hub>=0.23.0
-pandas>=2.2.0
-pyarrow>=15.0.0
+# PyTorch CPU-only for lightweight deployments
+--extra-index-url https://download.pytorch.org/whl/cpu
 
-# Phase 1+ (installed now to avoid re-installing later)
+# Core ML & Retrieval
+torch==2.3.1+cpu
 sentence-transformers>=3.0.0
 faiss-cpu>=1.8.0
 langchain-text-splitters>=0.2.0
 tiktoken>=0.7.0
 
-# Phase 4+ API integrations
+# API Integrations
 httpx>=0.27.0
 python-dotenv>=1.0.0
 
-# Phase 5+ backend & frontend
+# FastAPI Backend & Server
 fastapi>=0.111.0
 uvicorn[standard]>=0.30.0
 pydantic>=2.7.0
 pydantic-settings>=2.3.0
+python-multipart>=0.0.9
+
+# Frontend / UI (Local dev)
 streamlit>=1.35.0
-# Testing & Utilities
+
+# Testing
 pytest>=8.0.0

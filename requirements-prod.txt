@@ -1,7 +1,8 @@
 # ── Production Backend Only (Railway deployment) ──────────────────────────────
-# Stripped of dataset/exploration/UI packages not needed by FastAPI backend
+--extra-index-url https://download.pytorch.org/whl/cpu
 
-# Core ML & retrieval
+# PyTorch CPU-only & lightweight sentence-transformers
+torch==2.3.1+cpu
 sentence-transformers>=3.0.0
 faiss-cpu>=1.8.0
 tiktoken>=0.7.0

@@ -127,7 +127,9 @@ class VectorRetriever:
 
         model = self.indexer._get_model()
         # Encode query and normalize for cosine similarity via inner product
-        query_vector = model.encode([query], normalize_embeddings=True).astype("float32")
+        import torch
+        with torch.inference_mode():
+            query_vector = model.encode([query], normalize_embeddings=True).astype("float32")
 
         # Search index
         scores, indices = self.index.search(query_vector, top_k)

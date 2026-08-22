@@ -3,8 +3,8 @@ nixPkgs = ["python312", "gcc"]
 
 [phases.install]
 cmds = [
-  "pip install -r requirements-prod.txt",
-  "python -c \"from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')\""
+  "pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements-prod.txt",
+  "python -c \"import torch; torch.set_num_threads(1); from sentence_transformers import SentenceTransformer; m = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'); torch.quantization.quantize_dynamic(m[0].auto_model, {torch.nn.Linear}, dtype=torch.qint8)\""
 ]
 
 [start]

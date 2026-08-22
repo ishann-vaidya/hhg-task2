@@ -22,7 +22,34 @@ class ChunkIndexer:
 
     def _get_model(self) -> SentenceTransformer:
         if self.model is None:
-            self.model = SentenceTransformer(self.model_name)
+            import gc
+            import logging
+            import torch
+
+            logger = logging.getLogger(__name__)
+
+            # Limit thread count to 1 to reduce thread stack allocations on low-memory containers (Railway 512MB RAM)
+            try:
+                torch.set_num_threads(1)
+                torch.set_num_interop_threads(1)
+            except Exception:
+                pass
+
+            logger.info("Loading embedding model '%s' on CPU with memory optimizations...", self.model_name)
+            model = SentenceTransformer(self.model_name, device="cpu")
+
+            # Apply dynamic int8 quantization to Linear layers
+            # This shrinks model weights RAM footprint by ~70% (from ~480MB down to ~120MB)
+            try:
+                model[0].auto_model = torch.quantization.quantize_dynamic(
+                    model[0].auto_model, {torch.nn.Linear}, dtype=torch.qint8
+                )
+                logger.info("Successfully applied dynamic int8 quantization to embedding model.")
+            except Exception as e:
+                logger.warning("Dynamic int8 quantization skipped: %s", e)
+
+            gc.collect()
+            self.model = model
         return self.model
 
     def build_index(
@@ -38,12 +65,14 @@ class ChunkIndexer:
         texts = [chunk.text for chunk in chunks]
 
         # Generate normalized embeddings (inner product corresponds to cosine similarity)
-        embeddings = model.encode(
-            texts,
-            batch_size=batch_size,
-            show_progress_bar=False,
-            normalize_embeddings=True,
-        )
+        import torch
+        with torch.inference_mode():
+            embeddings = model.encode(
+                texts,
+                batch_size=batch_size,
+                show_progress_bar=False,
+                normalize_embeddings=True,
+            )
         embeddings = np.array(embeddings).astype("float32")
 
         dimension = embeddings.shape[1]
