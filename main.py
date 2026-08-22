@@ -61,11 +61,11 @@ TEMP_DIR = Path("data/temp")
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
 # Log index directory state on startup for Railway diagnostics
-logger.info("=== STARTUP: INDEX_DIR = %s ===", INDEX_DIR)
-logger.info("=== STARTUP: INDEX_DIR exists = %s ===", INDEX_DIR.exists())
-if INDEX_DIR.exists():
-    for p in sorted(INDEX_DIR.rglob("*")):
-        logger.info("  [INDEX] %s (size=%s)", p, p.stat().st_size if p.is_file() else "DIR")
+try:
+    logger.info("=== STARTUP: INDEX_DIR = %s ===", INDEX_DIR)
+    logger.info("=== STARTUP: INDEX_DIR exists = %s ===", INDEX_DIR.exists())
+except Exception as e:
+    logger.warning("Startup index log notice: %s", e)
 
 
 class TextQueryRequest(BaseModel):
