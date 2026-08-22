@@ -1,0 +1,21 @@
+# ── Production Backend Only (Railway deployment) ──────────────────────────────
+# Stripped of dataset/exploration/UI packages not needed by FastAPI backend
+
+# Core ML & retrieval
+sentence-transformers>=3.0.0
+faiss-cpu>=1.8.0
+tiktoken>=0.7.0
+
+# Text splitting
+langchain-text-splitters>=0.2.0
+
+# API integrations
+httpx>=0.27.0
+python-dotenv>=1.0.0
+
+# FastAPI backend
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+python-multipart>=0.0.9
