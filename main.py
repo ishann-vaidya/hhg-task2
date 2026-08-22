@@ -77,6 +77,13 @@ class TextQueryRequest(BaseModel):
     mock_answer: str | None = None
 
 
+@app.get("/")
+@app.get("/health")
+def root_health() -> dict[str, Any]:
+    """Root health check endpoint for Railway container readiness probes."""
+    return {"status": "ok", "service": "Indic Voice RAG API", "version": "1.0.0"}
+
+
 @app.get("/api/status")
 def get_status() -> dict[str, Any]:
     """Check API configuration status (are API keys loaded on the backend?)."""
