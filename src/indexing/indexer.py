@@ -6,7 +6,6 @@ from typing import Any
 
 import faiss
 import numpy as np
-from sentence_transformers import SentenceTransformer
 
 from config.settings import INDEX_DIR, RETRIEVAL_EMBEDDING_MODEL
 from src.chunking.base import Chunk
@@ -20,7 +19,7 @@ class ChunkIndexer:
         self.model_name = embedding_model_name
         self.model = None
 
-    def _get_model(self) -> SentenceTransformer:
+    def _get_model(self) -> Any:
         if self.model is None:
             import gc
             import logging
