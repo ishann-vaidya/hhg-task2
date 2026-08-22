@@ -1,3 +1,26 @@
+# Frontend
+
+The frontend calls the FastAPI service configured by `VITE_API_URL`.
+
+For local development, leave it unset to use `http://localhost:8000`:
+
+```bash
+npm run dev
+```
+
+For the deployed Vercel frontend, add this environment variable in the Vercel project settings and redeploy:
+
+```text
+VITE_API_URL=https://<your-deployed-fastapi-domain>
+```
+
+The FastAPI service must be deployed separately and expose `/api/status`, `/api/latency`, and the prediction routes.
+
+Set the matching frontend origin in the FastAPI deployment as well:
+
+```text
+FRONTEND_URL=https://hhg-task2.vercel.app
+```
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
