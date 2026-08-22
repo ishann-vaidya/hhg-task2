@@ -6,14 +6,11 @@ __pycache__/
 venv/
 env/
 
-# Data & indexes (downloaded / generated — too large for git)
+# Data & indexes
 data/raw/
 data/processed/
-data/indexes/
 data/temp/
 data/latency_report.json
-*.faiss
-*.pkl
 
 # Secrets
 .env
