@@ -8,6 +8,14 @@ import time
 from pathlib import Path
 from typing import Any
 
+# Set C-extension thread counts to 1 BEFORE importing numpy, faiss, or torch
+# This prevents OpenMP / MKL / BLAS from spawning 16-thread stacks (16 * 64MB = 1GB RAM OOM on Railway 512MB RAM)
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 from dotenv import load_dotenv
 
 # Load credentials from .env

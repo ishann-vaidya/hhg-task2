@@ -1,8 +1,14 @@
 """Embedding generation and FAISS index construction for text chunks."""
 
 import json
+import os
 from pathlib import Path
 from typing import Any
+
+# Limit OpenMP/BLAS thread stacks before faiss import
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
 
 import faiss
 import numpy as np
