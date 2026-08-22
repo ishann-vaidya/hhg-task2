@@ -1,6 +1,7 @@
 """FastAPI Backend Service for Voice-Enabled RAG pipeline."""
 
 import json
+import logging
 import os
 import shutil
 import time
@@ -12,11 +13,15 @@ from dotenv import load_dotenv
 # Load credentials from .env
 load_dotenv()
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from src.pipeline import VoiceRAGPipeline
+from config.settings import INDEX_DIR
 
 app = FastAPI(
     title="Indic Voice RAG API Service",
@@ -48,6 +53,13 @@ app.add_middleware(
 TEMP_DIR = Path("data/temp")
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
+# Log index directory state on startup for Railway diagnostics
+logger.info("=== STARTUP: INDEX_DIR = %s ===", INDEX_DIR)
+logger.info("=== STARTUP: INDEX_DIR exists = %s ===", INDEX_DIR.exists())
+if INDEX_DIR.exists():
+    for p in sorted(INDEX_DIR.rglob("*")):
+        logger.info("  [INDEX] %s (size=%s)", p, p.stat().st_size if p.is_file() else "DIR")
+
 
 class TextQueryRequest(BaseModel):
     query: str
@@ -67,6 +79,29 @@ def get_status() -> dict[str, Any]:
         "groq_configured": bool(groq_key),
         "sarvam_configured": bool(sarvam_key),
         "live_mode_ready": bool(groq_key and sarvam_key),
+    }
+
+
+@app.get("/api/debug")
+def get_debug_info() -> dict[str, Any]:
+    """Diagnostic endpoint — lists index files found on the server filesystem."""
+    import sys
+    cwd = Path.cwd()
+    index_files: list[dict] = []
+    if INDEX_DIR.exists():
+        for p in sorted(INDEX_DIR.rglob("*")):
+            index_files.append({
+                "path": str(p),
+                "is_file": p.is_file(),
+                "size_bytes": p.stat().st_size if p.is_file() else None,
+            })
+    return {
+        "cwd": str(cwd),
+        "index_dir": str(INDEX_DIR),
+        "index_dir_exists": INDEX_DIR.exists(),
+        "index_files": index_files,
+        "python_version": sys.version,
+        "data_dir_contents": [str(p) for p in Path("data").iterdir()] if Path("data").exists() else [],
     }
 
 
