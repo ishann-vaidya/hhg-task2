@@ -27,8 +27,12 @@ import {
   Layers
 } from "lucide-react";
 
-// Server URL - dynamically determine if we are running in the same origin or fallback
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+// Use the deployed API URL in production; keep localhost only during local development.
+const API_BASE = (
+  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_BASE ||
+  (import.meta.env.DEV ? "http://localhost:8000" : "")
+).replace(/\/$/, "");
 
 // Multi-language configurations (Presets, placeholders, and mock defaults)
 const languageConfigs = {

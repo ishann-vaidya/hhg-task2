@@ -24,15 +24,20 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Enable CORS for React Frontend development
+# Enable CORS for local development and the deployed frontend.
+frontend_url = os.getenv("FRONTEND_URL", "").strip().rstrip("/")
+allowed_origins = [
+    "http://localhost:5173",  # default Vite React port
+    "http://localhost:3000",  # standard React port
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # default Vite React port
-        "http://localhost:3000",  # standard React port
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
