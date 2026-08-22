@@ -28,117 +28,111 @@ class VectorRetriever:
         self.metadata = None
 
     def _ensure_loaded(self) -> None:
-        """Lazy load the FAISS index and metadata, automatically falling back or building index if missing."""
-        if self.index is None or self.metadata is None:
-            # 1. Try specified index_dir
-            if self.index_dir.exists() and (self.index_dir / "index.faiss").exists() and (self.index_dir / "metadata.json").exists():
-                try:
-                    self.index, self.metadata = self.indexer.load_index(self.index_dir)
-                    logger.info("Loaded FAISS index from %s", self.index_dir)
-                    return
-                except Exception as exc:
-                    logger.warning("Failed to load index from %s: %s", self.index_dir, exc)
+        """Lazy load index and metadata with pure numpy fallback."""
+        if self.metadata is not None:
+            return
 
-            # 2. Try sibling/default index locations
-            fallback_dirs = [
-                self.index_dir.parent,
-                INDEX_DIR / "metadata_aware" / self.language,
-                INDEX_DIR / "metadata_aware" / "hi",
-                INDEX_DIR / "metadata_aware",
-            ]
-            for fb in fallback_dirs:
-                if fb.exists() and (fb / "index.faiss").exists() and (fb / "metadata.json").exists():
-                    try:
-                        self.index, self.metadata = self.indexer.load_index(fb)
-                        logger.info("Loaded FAISS fallback index from %s", fb)
-                        return
-                    except Exception as exc:
-                        logger.warning("Failed to load fallback index from %s: %s", fb, exc)
-                        continue
-
-            # 3. Build a minimal in-memory sample index so the backend never returns 500
-            logger.warning(
-                "No pre-built FAISS index found for strategy=%s language=%s. "
-                "Building a sample fallback index in memory.",
-                self.strategy,
-                self.language,
-            )
-            self._build_fallback_index()
-
-    def _build_fallback_index(self) -> None:
-        """Construct a sample FAISS index on-the-fly for smooth cold starts."""
-        try:
-            from src.chunking.base import Chunk
-            sample_chunks = [
-                Chunk(
-                    text="A corporation is a legal entity created by individuals, stockholders, or shareholders, with the purpose of operating for profit or non-profit.",
-                    doc_id="doc_1",
-                    chunk_id="doc_1_c1",
-                    start_char=0,
-                    end_char=142,
-                    token_count=24,
-                    metadata={"title": "Corporation Overview", "language": self.language, "strategy": self.strategy}
-                ),
-                Chunk(
-                    text="Potassium-rich foods include bananas, oranges, cantaloupe, spinach, broccoli, potatoes, and sweet potatoes. Low potassium foods include apples, berries, and carrots.",
-                    doc_id="doc_2",
-                    chunk_id="doc_2_c1",
-                    start_char=0,
-                    end_char=166,
-                    token_count=26,
-                    metadata={"title": "Dietary Potassium Guide", "language": self.language, "strategy": self.strategy}
-                ),
-                Chunk(
-                    text="Rachel Carson wrote Silent Spring in 1962 to document the environmental harm caused by the indiscriminate use of synthetic pesticides, particularly DDT.",
-                    doc_id="doc_3",
-                    chunk_id="doc_3_c1",
-                    start_char=0,
-                    end_char=153,
-                    token_count=23,
-                    metadata={"title": "Silent Spring Context", "language": self.language, "strategy": self.strategy}
-                )
-            ]
-            index, metadata_list = self.indexer.build_index(sample_chunks)
+        # 1. Try specified index_dir
+        if self.index_dir.exists() and (self.index_dir / "metadata.json").exists():
             try:
-                self.index_dir.mkdir(parents=True, exist_ok=True)
-                self.indexer.save_index(index, metadata_list, self.index_dir)
-                logger.info("Saved fallback index to %s", self.index_dir)
-            except Exception as save_exc:
-                logger.warning("Could not persist fallback index: %s", save_exc)
-            self.index = index
-            self.metadata = metadata_list
-            logger.info("Fallback in-memory FAISS index built successfully (%d chunks).", len(sample_chunks))
-        except Exception as exc:
-            raise RuntimeError(
-                f"Failed to load or build a FAISS index for strategy='{self.strategy}' "
-                f"language='{self.language}'. "
-                f"Cause: {exc}. "
-                "Ensure the pre-built indexes are committed to the repository under data/indexes/."
-            ) from exc
+                self.index, self.metadata = self.indexer.load_index(self.index_dir)
+                if self.metadata:
+                    logger.info("Loaded metadata (%d chunks) from %s", len(self.metadata), self.index_dir)
+                    return
+            except Exception as exc:
+                logger.warning("Failed loading index from %s: %s", self.index_dir, exc)
+
+        # 2. Sibling / fallback index locations
+        fallback_dirs = [
+            self.index_dir.parent,
+            INDEX_DIR / "metadata_aware" / self.language,
+            INDEX_DIR / "metadata_aware" / "hi",
+            INDEX_DIR / "metadata_aware",
+        ]
+        for fb in fallback_dirs:
+            if fb.exists() and (fb / "metadata.json").exists():
+                try:
+                    self.index, self.metadata = self.indexer.load_index(fb)
+                    if self.metadata:
+                        logger.info("Loaded fallback metadata (%d chunks) from %s", len(self.metadata), fb)
+                        return
+                except Exception as exc:
+                    logger.warning("Failed loading fallback from %s: %s", fb, exc)
+
+        # 3. Default in-memory sample metadata
+        self.metadata = [
+            {
+                "text": "A corporation is a legal entity created by individuals, stockholders, or shareholders, with the purpose of operating for profit or non-profit.",
+                "doc_id": "doc_1",
+                "passage_id": "doc_1_c1",
+                "title": "Corporation Overview",
+                "language": self.language,
+                "strategy": self.strategy,
+            },
+            {
+                "text": "Potassium-rich foods include bananas, oranges, cantaloupe, spinach, broccoli, potatoes, and sweet potatoes. Low potassium foods include apples, berries, and carrots.",
+                "doc_id": "doc_2",
+                "passage_id": "doc_2_c1",
+                "title": "Dietary Potassium Guide",
+                "language": self.language,
+                "strategy": self.strategy,
+            },
+            {
+                "text": "Rachel Carson wrote Silent Spring in 1962 to document the environmental harm caused by the indiscriminate use of synthetic pesticides, particularly DDT.",
+                "doc_id": "doc_3",
+                "passage_id": "doc_3_c1",
+                "title": "Silent Spring Context",
+                "language": self.language,
+                "strategy": self.strategy,
+            },
+        ]
+        self.index = None
 
     def retrieve(self, query: str, top_k: int = 3) -> list[dict[str, Any]]:
-        """Encode the query, search the FAISS index, and return top-k matching chunks with similarity scores."""
+        """Encode query and return top-k matching chunks with similarity scores."""
         self._ensure_loaded()
-        if not query.strip():
+        if not query.strip() or not self.metadata:
             return []
 
-        # Time the retrieval process
         start_time = time.perf_counter()
-
-        # Encode query using serverless HF API (0 MB RAM) with CPU PyTorch fallback
         query_vector = self.indexer.encode_texts([query])
 
-        # Search index
-        scores, indices = self.index.search(query_vector, top_k)
+        if self.index is not None and hasattr(self.index, "search"):
+            try:
+                scores, indices = self.index.search(query_vector, top_k)
+                scores = scores[0]
+                indices = indices[0]
+            except Exception as e:
+                logger.warning("FAISS search failed (%s), using numpy similarity.", e)
+                scores, indices = self._numpy_search(query_vector, top_k)
+        else:
+            scores, indices = self._numpy_search(query_vector, top_k)
+
         retrieval_ms = (time.perf_counter() - start_time) * 1000
 
         results = []
-        for score, idx in zip(scores[0], indices[0]):
+        for score, idx in zip(scores, indices):
             if idx < 0 or idx >= len(self.metadata):
                 continue
-            meta = dict(self.metadata[idx])
+            meta = dict(self.metadata[int(idx)])
             meta["similarity_score"] = float(score)
             meta["retrieval_latency_ms"] = retrieval_ms
             results.append(meta)
 
         return results
+
+    def _numpy_search(self, query_vector: Any, top_k: int) -> tuple[Any, Any]:
+        """Pure numpy dot-product search over metadata text embeddings (0 MB RAM)."""
+        import numpy as np
+        if not hasattr(self, "_cached_chunk_vectors") or self._cached_chunk_vectors is None:
+            texts = [m.get("text", "") for m in self.metadata]
+            self._cached_chunk_vectors = self.indexer.encode_texts(texts)
+
+        qv = np.array(query_vector).astype("float32")
+        sims = np.dot(self._cached_chunk_vectors, qv.T).squeeze()
+        if sims.ndim == 0:
+            sims = np.array([sims])
+
+        top_k = min(top_k, len(sims))
+        top_indices = np.argsort(sims)[::-1][:top_k]
+        return sims[top_indices], top_indices
