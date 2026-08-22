@@ -1,26 +1,21 @@
-# PyTorch CPU-only for lightweight deployments
---extra-index-url https://download.pytorch.org/whl/cpu
+# ── Production Lightweight Requirements (Railway Backend) ─────────────────────
 
-# Core ML & Retrieval
-torch==2.3.1+cpu
-sentence-transformers>=3.0.0
+# Core Vector Search & Math (Lightweight binaries)
 faiss-cpu>=1.8.0
-langchain-text-splitters>=0.2.0
-tiktoken>=0.7.0
+numpy>=1.26.0
 
-# API Integrations
+# API Integrations & Async HTTP
 httpx>=0.27.0
 python-dotenv>=1.0.0
+tenacity>=8.3.0
 
-# FastAPI Backend & Server
+# FastAPI Backend & ASGI Web Server
 fastapi>=0.111.0
 uvicorn[standard]>=0.30.0
 pydantic>=2.7.0
 pydantic-settings>=2.3.0
 python-multipart>=0.0.9
 
-# Frontend / UI (Local dev)
-streamlit>=1.35.0
-
-# Testing
+# Utilities & Testing
+tiktoken>=0.7.0
 pytest>=8.0.0
