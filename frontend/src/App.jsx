@@ -27,12 +27,17 @@ import {
   Layers
 } from "lucide-react";
 
-// Use the deployed API URL in production; keep localhost only during local development.
-const API_BASE = (
-  import.meta.env.VITE_API_URL ||
-  import.meta.env.VITE_API_BASE ||
-  (import.meta.env.DEV ? "http://localhost:8000" : "")
-).replace(/\/$/, "");
+// Dynamic API URL resolution with localStorage override, env vars, or local/origin fallbacks.
+const getInitialApiBase = () => {
+  if (typeof window !== "undefined") {
+    const saved = localStorage.getItem("indic_rag_api_url");
+    if (saved && saved.trim()) return saved.trim().replace(/\/$/, "");
+  }
+  const envUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE;
+  if (envUrl && envUrl.trim()) return envUrl.trim().replace(/\/$/, "");
+  if (import.meta.env.DEV) return "http://localhost:8000";
+  return typeof window !== "undefined" ? window.location.origin.replace(/\/$/, "") : "";
+};
 
 // Multi-language configurations (Presets, placeholders, and mock defaults)
 const languageConfigs = {
@@ -242,6 +247,12 @@ export default function App() {
   const [language, setLanguage] = useState("en"); // Default to English interface queries
   const [threshold, setThreshold] = useState(0.42);
   const [isMock, setIsMock] = useState(true);
+  // API Endpoint & Connection State
+  const [apiBaseUrl, setApiBaseUrl] = useState(getInitialApiBase);
+  const [apiBaseInput, setApiBaseInput] = useState(apiBaseUrl);
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
   const [apiStatus, setApiStatus] = useState({
     groq_configured: false,
     sarvam_configured: false,
@@ -271,11 +282,11 @@ export default function App() {
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
 
-  // Load API status and Latency reports on mount
+  // Load API status and Latency reports on mount or whenever API URL changes
   useEffect(() => {
-    fetchApiStatus();
-    fetchLatencyReport();
-  }, []);
+    fetchApiStatus(apiBaseUrl);
+    fetchLatencyReport(apiBaseUrl);
+  }, [apiBaseUrl]);
 
   // Update timer for recording
   useEffect(() => {
@@ -292,21 +303,28 @@ export default function App() {
     };
   }, [isRecording]);
 
-  const fetchApiStatus = async () => {
+  const fetchApiStatus = async (targetUrl = apiBaseUrl) => {
+    const cleanUrl = (targetUrl || "").replace(/\/$/, "");
     try {
-      const res = await fetch(`${API_BASE}/api/status`);
+      const res = await fetch(`${cleanUrl}/api/status`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       const data = await res.json();
       setApiStatus(data);
-      // Auto-configure mock mode based on key availability
+      setIsConnected(true);
+      setConnectionError(null);
       setIsMock(!data.live_mode_ready);
     } catch (err) {
       console.error("Failed to fetch API status", err);
+      setIsConnected(false);
+      setConnectionError(err.message || "Cannot connect to FastAPI backend");
     }
   };
 
-  const fetchLatencyReport = async () => {
+  const fetchLatencyReport = async (targetUrl = apiBaseUrl) => {
+    const cleanUrl = (targetUrl || "").replace(/\/$/, "");
     try {
-      const res = await fetch(`${API_BASE}/api/latency`);
+      const res = await fetch(`${cleanUrl}/api/latency`);
+      if (!res.ok) return;
       const data = await res.json();
       if (data.status !== "warning") {
         setLatencyReport(data);
@@ -314,6 +332,15 @@ export default function App() {
     } catch (err) {
       console.error("Failed to load latency report", err);
     }
+  };
+
+  const handleSaveApiBase = (newUrl) => {
+    const clean = (newUrl || "").trim().replace(/\/$/, "");
+    setApiBaseUrl(clean);
+    setApiBaseInput(clean);
+    localStorage.setItem("indic_rag_api_url", clean);
+    fetchApiStatus(clean);
+    fetchLatencyReport(clean);
   };
 
   // HTML5 MediaRecorder voice capture
@@ -370,9 +397,12 @@ export default function App() {
 
     setLoading(true);
     setResponse(null);
+    setErrorMessage(null);
+
+    const cleanUrl = (apiBaseUrl || "").replace(/\/$/, "");
 
     try {
-      let data;
+      let res;
       // 1. Audio Upload Route (WAV/MP3/WebM)
       if (audioBlob || audioFile) {
         const formData = new FormData();
@@ -387,15 +417,14 @@ export default function App() {
         formData.append("mock", isMock.toString());
         formData.append("mock_text", query || languageConfigs[language].mockText);
 
-        const res = await fetch(`${API_BASE}/api/predict/audio`, {
+        res = await fetch(`${cleanUrl}/api/predict/audio`, {
           method: "POST",
           body: formData
         });
-        data = await res.json();
       }
       // 2. Text Bypass Route
       else {
-        const res = await fetch(`${API_BASE}/api/predict/text`, {
+        res = await fetch(`${cleanUrl}/api/predict/text`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -406,15 +435,26 @@ export default function App() {
             mock: isMock
           })
         });
-        data = await res.json();
       }
 
+      if (!res.ok) {
+        let errDetail = `Server returned HTTP ${res.status}`;
+        try {
+          const errData = await res.json();
+          if (errData.detail) errDetail = errData.detail;
+        } catch (_) {}
+        throw new Error(errDetail);
+      }
+
+      const data = await res.json();
       setResponse(data);
       // Reload latency report after runs
-      fetchLatencyReport();
+      fetchLatencyReport(cleanUrl);
     } catch (err) {
       console.error(err);
-      alert("Failed to process request. Verify your FastAPI backend is running on port 8000.");
+      setErrorMessage(
+        `Failed to process request (${err.message}). Verify that your FastAPI backend is running and accessible at "${cleanUrl || "same origin"}".`
+      );
     } finally {
       setLoading(false);
     }
@@ -621,9 +661,9 @@ export default function App() {
 
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className={`h-2.5 w-2.5 rounded-full ${isConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"}`}></span>
                   <span className="text-[11px] text-slate-300 font-medium bg-slate-900/80 px-2.5 py-1 rounded-full border border-slate-700">
-                    Backend Status: Connected
+                    Backend Status: {isConnected ? "Connected" : "Disconnected"}
                   </span>
                 </div>
 
@@ -665,6 +705,36 @@ export default function App() {
 
                 {showConfig && (
                   <div className="flex flex-col gap-4">
+                    
+                    {/* FastAPI Backend API URL Input */}
+                    <div>
+                      <label className="text-xs text-slate-400 block mb-1.5 font-medium flex justify-between items-center">
+                        <span>FastAPI Backend URL</span>
+                        {isConnected ? (
+                          <span className="text-[10px] text-emerald-400 font-medium">✓ Connected</span>
+                        ) : (
+                          <span className="text-[10px] text-red-400 font-medium">✗ Disconnected</span>
+                        )}
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={apiBaseInput}
+                          onChange={(e) => setApiBaseInput(e.target.value)}
+                          placeholder="e.g. https://my-backend.onrender.com or http://localhost:8000"
+                          className="flex-1 bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-mono"
+                        />
+                        <button
+                          onClick={() => handleSaveApiBase(apiBaseInput)}
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                        >
+                          Save
+                        </button>
+                      </div>
+                      <span className="text-[10px] text-slate-500 block mt-1">
+                        Active API base: <code className="text-indigo-300">{apiBaseUrl || "Same Origin"}</code>
+                      </span>
+                    </div>
                     
                     {/* Language Selector Dropdown */}
                     <div>
@@ -782,6 +852,36 @@ export default function App() {
 
             {/* ── Right Column: Interactive Console & Results ── */}
             <section className="lg:col-span-8 flex flex-col gap-6">
+              
+              {/* API Connection Error Banner */}
+              {errorMessage && (
+                <div className="bg-red-955/70 border border-red-800/80 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-red-200 text-xs shadow-xl animate-fadeIn">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold block text-red-300">Backend API Error</span>
+                      <p className="text-red-300/80 mt-0.5">{errorMessage}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        setShowConfig(true);
+                        setErrorMessage(null);
+                      }}
+                      className="bg-red-900/80 hover:bg-red-800 text-white font-semibold px-3 py-1.5 rounded-lg border border-red-700/60 transition-all text-xs cursor-pointer"
+                    >
+                      Configure API URL
+                    </button>
+                    <button
+                      onClick={() => setErrorMessage(null)}
+                      className="text-red-400 hover:text-red-200 px-2 py-1.5 text-xs cursor-pointer"
+                    >
+                      Dismiss
+                    </button>
+                  </div>
+                </div>
+              )}
               
               {/* Voice Input Dashboard Console */}
               <div className="bg-slate-950/70 border border-slate-800/70 rounded-2xl p-6 backdrop-blur-md shadow-xl">
