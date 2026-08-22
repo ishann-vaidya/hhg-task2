@@ -67,3 +67,7 @@ SEMANTIC_MAX_CHUNK_TOKENS = 384
 
 # Embedding model used only for semantic chunking (local — no API key)
 SEMANTIC_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
+# Embedding model used for retrieval (multilingual for Indic languages)
+RETRIEVAL_EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+

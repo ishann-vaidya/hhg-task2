@@ -99,10 +99,10 @@ def extract_passages_from_example(
                 "passage_index": idx,
                 "is_selected": bool(selected_flags[idx]) if idx < len(selected_flags) else False,
                 "language": example.get("target_lang") if use_translated else "eng_Latn",
-                "query": example.get("query"),
+                "query": example.get("Eng_Query") if not use_translated else example.get("query"),
                 "query_type": example.get("query_type"),
                 "passage_text": text,
-                "answer": example.get("Answer"),
+                "answer": example.get("Eng_Answer") if not use_translated else example.get("Answer"),
                 "eng_query": example.get("Eng_Query"),
                 "eng_answer": example.get("Eng_Answer"),
             }
